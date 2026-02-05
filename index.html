@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Valentine?</title>
+  <style>
+    :root { color-scheme: light; }
+    body{
+      margin:0; min-height:100vh; display:grid; place-items:center;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at top, #ffe6ee, #fff);
+      padding: 24px;
+    }
+    .card{
+      width:min(560px, 100%);
+      background:#ffffffcc;
+      backdrop-filter: blur(10px);
+      border: 1px solid #ffd1dc;
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+      text-align:center;
+      position: relative;
+      overflow:hidden;
+    }
+    h1{
+      margin: 8px 0 16px;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.1;
+    }
+    p{
+      margin: 0 0 18px;
+      opacity: .75;
+      font-size: 16px;
+    }
+    .buttons{
+      display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
+      margin-top: 10px;
+      position: relative;
+      min-height: 64px;
+    }
+    button{
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 16px;
+      cursor:pointer;
+      transition: transform .12s ease, box-shadow .12s ease;
+      box-shadow: 0 8px 18px rgba(0,0,0,.10);
+      user-select:none;
+      touch-action: manipulation;
+    }
+    button:active{ transform: translateY(1px) scale(.99); }
+    .yes{
+      background: #ff3b7d;
+      color: white;
+    }
+    .no{
+      background: #f1f1f6;
+      color: #222;
+      position: relative;
+    }
+    .heart{
+      font-size: 42px;
+      filter: drop-shadow(0 8px 12px rgba(255,59,125,.25));
+    }
+    .hidden{ display:none; }
+    .success{
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid #ffd1dc;
+      background: #fff;
+    }
+    .confetti{
+      position:absolute; inset:-20%;
+      pointer-events:none;
+      opacity:0;
+      transition: opacity .25s ease;
+    }
+    .confetti.show{ opacity:1; }
+  </style>
+</head>
+<body>
+  <main class="card" aria-live="polite">
+    <div class="heart" aria-hidden="true">💘</div>
+    <h1>Arsh, will you be my valentine?</h1>
+    <p>Choose wisely 😌</p>
+
+    <div class="buttons" id="btnArea">
+      <button class="yes" id="yesBtn">Yes 💖</button>
+      <button class="no" id="noBtn">No 🙃</button>
+    </div>
+
+    <div class="success hidden" id="success">
+      <h2 style="margin:0 0 6px;">YAYYYYY 🥳</h2>
+      <div style="opacity:.8;">Officially valentines. I’m smiling fr.</div>
+    </div>
+
+    <canvas class="confetti" id="confetti"></canvas>
+  </main>
+
+  <script>
+    const yesBtn = document.getElementById("yesBtn");
+    const noBtn = document.getElementById("noBtn");
+    const success = document.getElementById("success");
+    const btnArea = document.getElementById("btnArea");
+
+    // Make "No" dodge the cursor/tap a bit
+    function moveNoButton() {
+      const areaRect = btnArea.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+
+      const maxX = areaRect.width - btnRect.width;
+      const maxY = areaRect.height - btnRect.height;
+
+      // If area is too small, just nudge
+      const x = Math.max(0, Math.min(maxX, Math.random() * maxX));
+      const y = Math.max(0, Math.min(maxY, Math.random() * maxY));
+
+      noBtn.style.position = "absolute";
+      noBtn.style.left = `${x}px`;
+      noBtn.style.top = `${y}px`;
+    }
+
+    // Desktop hover
+    noBtn.addEventListener("mouseenter", moveNoButton);
+    // Mobile tap
+    noBtn.addEventListener("touchstart", (e) => { e.preventDefault(); moveNoButton(); }, { passive:false });
+
+    yesBtn.addEventListener("click", () => {
+      success.classList.remove("hidden");
+      yesBtn.disabled = true;
+      noBtn.disabled = true;
+      fireConfetti();
+    });
+
+    // Simple confetti
+    const canvas = document.getElementById("confetti");
+    const ctx = canvas.getContext("2d");
+    let pieces = [];
+    let animId = null;
+
+    function resizeCanvas(){
+      const card = document.querySelector(".card");
+      const r = card.getBoundingClientRect();
+      canvas.width = Math.floor(r.width * devicePixelRatio);
+      canvas.height = Math.floor(r.height * devicePixelRatio);
+      canvas.style.width = r.width + "px";
+      canvas.style.height = r.height + "px";
+      ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    }
+
+    function makePieces(count=120){
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      pieces = Array.from({length:count}, () => ({
+        x: Math.random() * w,
+        y: -20 - Math.random() * h * 0.2,
+        vx: (Math.random() - 0.5) * 2.4,
+        vy: 2 + Math.random() * 3.2,
+        size: 6 + Math.random() * 6,
+        rot: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.2
+      }));
+    }
+
+    function draw(){
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      ctx.clearRect(0,0,w,h);
+      for (const p of pieces){
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+        // a little gravity
+        p.vy += 0.02;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+
+        // random pastel colors without hardcoding a palette
+        const hue = (p.x * 2 + p.y) % 360;
+        ctx.fillStyle = `hsl(${hue}, 85%, 70%)`;
+
+        ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+        ctx.restore();
+      }
+
+      // Keep animating while pieces are on screen
+      if (pieces.some(p => p.y < h + 40)) {
+        animId = requestAnimationFrame(draw);
+      } else {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
+    }
+
+    function fireConfetti(){
+      resizeCanvas();
+      canvas.classList.add("show");
+      makePieces();
+      if (!animId) draw();
+    }
+
+    window.addEventListener("resize", () => {
+      if (!success.classList.contains("hidden")) resizeCanvas();
+    });
+
+    // Initial layout
+    // Give the "No" a starting position so it can jump around inside the area
+    requestAnimationFrame(() => moveNoButton());
+  </script>
+</body>
+</html>
